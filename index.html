@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GÖZCÜ-AI | Siber Güvenlik Kontrol Paneli</title>
+
+    <!-- Harita -->
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIINfQ3oM2jX6F9E4N8N0sK5s8L5D5B5M5M="
+        crossorigin=""
+    />
+
+    <style>
+        :root {
+            --bg: #05080d;
+            --panel: #0a1018;
+            --panel-2: #0e1621;
+            --line: #172535;
+            --cyan: #00e5ff;
+            --green: #00ff9d;
+            --yellow: #ffd166;
+            --orange: #ff8a00;
+            --red: #ff1648;
+            --text: #e8f2ff;
+            --muted: #70829b;
+            --shadow: 0 0 25px rgba(0, 229, 255, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family:
+                Inter,
+                ui-sans-serif,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        body {
+            background:
+                radial-gradient(circle at 20% 10%, rgba(0, 229, 255, .06), transparent 30%),
+                radial-gradient(circle at 80% 90%, rgba(0, 255, 157, .04), transparent 25%),
+                #05080d;
+        }
+
+        .app {
+            display: grid;
+            grid-template-rows: 72px 1fr 34px;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* HEADER */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 22px;
+            border-bottom: 1px solid var(--line);
+            background: rgba(5, 8, 13, .96);
+            box-shadow: var(--shadow);
+            position: relative;
+            z-index: 50;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .logo {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            color: var(--cyan);
+            border: 1px solid rgba(0, 229, 255, .35);
+            background: rgba(0, 229, 255, .06);
+            box-shadow:
+                0 0 18px rgba(0, 229, 255, .12),
+                inset 0 0 20px rgba(0, 229, 255, .04);
+            font-size: 21px;
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: 18px;
+            letter-spacing: 3px;
+            font-weight: 800;
+        }
+
+        .brand small {
+            color: var(--muted);
+            letter-spacing: 1.2px;
+        }
+
+        .status-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 13px;
+            border: 1px solid rgba(0,255,157,.18);
+            background: rgba(0,255,157,.04);
+            border-radius: 9px;
+            color: var(--green);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .7px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 10px var(--green);
+            animation: pulse 1.3s infinite;
+        }
+
+        .clock {
+            min-width: 93px;
+            text-align: center;
+            padding: 9px 12px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            border-radius: 9px;
+            font-family: Consolas, monospace;
+            color: var(--cyan);
+            font-size: 13px;
+        }
+
+        /* MAIN */
+        .main {
+            min-height: 0;
+            padding: 14px;
+            display: grid;
+            grid-template-columns: 1.55fr 1fr;
+            grid-template-rows: 1.15fr .85fr;
+            gap: 14px;
+        }
+
+        .panel {
+            min-width: 0;
+            min-height: 0;
+            border: 1px solid var(--line);
+            background: linear-gradient(
+                145deg,
+                rgba(14,22,33,.95),
+                rgba(7,12,18,.98)
+            );
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow:
+                0 8px 35px rgba(0,0,0,.20),
+                inset 0 1px 0 rgba(255,255,255,.02);
+            position: relative;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 47px;
+            padding: 0 15px;
+            border-bottom: 1px solid var(--line);
+            background: rgba(10,16,24,.85);
+        }
+
+        .panel-title {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 800;
+        }
+
+        .panel-title::before {
+            content: "";
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--cyan);
+            box-shadow: 0 0 10px var(--cyan);
+        }
+
+        .badge {
+            padding: 5px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--line);
+            color: var(--muted);
+            font-size: 10px;
+            font-family: Consolas, monospace;
+        }
+
+        /* MAP */
+        .map-panel {
+            grid-row: 1 / span 2;
+        }
+
+        #map {
+            width: 100%;
+            height: calc(100% - 47px);
+            background: #07101a;
+        }
+
+        .map-overlay {
+            position: absolute;
+            left: 14px;
+            bottom: 14px;
+            z-index: 900;
+            width: 210px;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(0,229,255,.16);
+            background: rgba(5,8,13,.89);
+            backdrop-filter: blur(8px);
+        }
+
+        .map-overlay h3 {
+            margin: 0 0 9px;
+            font-size: 11px;
+            letter-spacing: 1.2px;
+            color: var(--cyan);
+        }
+
+        .map-stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .map-stat strong {
+            color: #dbeaff;
+        }
+
+        /* LOGS */
+        .logs {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .log-container {
+            height: calc(100% - 47px);
+            padding: 10px;
+            overflow: hidden;
+            font-family: Consolas, Monaco, monospace;
+            font-size: 11px;
+        }
+
+        .log-row {
+            display: grid;
+            grid-template-columns: 72px 72px 1fr;
+            gap: 8px;
+            padding: 7px 5px;
+            border-bottom: 1px solid rgba(255,255,255,.025);
+            animation: fadeIn .2s ease;
+        }
+
+        .log-time {
+            color: #52647b;
+        }
+
+        .log-type {
+            font-weight: 800;
+        }
+
+        .log-msg {
+            color: #b7c9dd;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .INFO { color: var(--cyan); }
+        .SAFE { color: var(--green); }
+        .WARN { color: var(--yellow); }
+        .ALERT { color: var(--red); }
+
+        /* BOTTOM RIGHT */
+        .right-bottom {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        /* GRAPH */
+        .graph-content {
+            height: calc(100% - 47px);
+            padding: 10px 12px 12px;
+            display: grid;
+            grid-template-rows: 1fr auto;
+            gap: 8px;
+        }
+
+        #ramCanvas {
+            width: 100%;
+            height: 100%;
+            min-height: 110px;
+            display: block;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .metric {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: rgba(0,0,0,.16);
+            padding: 8px;
+        }
+
+        .metric small {
+            color: var(--muted);
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .metric strong {
+            display: block;
+            margin-top: 3px;
+            font-size: 16px;
+            font-family: Consolas, monospace;
+        }
+
+        /* CONTROL */
+        .control-content {
+            height: calc(100% - 47px);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .threat-button {
+            border: 1px solid rgba(255,22,72,.5);
+            background:
+                linear-gradient(
+                    180deg,
+                    rgba(255,22,72,.17),
+                    rgba(255,22,72,.06)
+                );
+            color: #ff6e91;
+            padding: 14px 12px;
+            border-radius: 9px;
+            font-size: 12px;
+            font-weight: 900;
+            letter-spacing: 1.3px;
+            cursor: pointer;
+            transition: .18s ease;
+        }
+
+        .threat-button:hover {
+            transform: translateY(-1px);
+            color: #fff;
+            border-color: var(--red);
+            box-shadow: 0 0 22px rgba(255,22,72,.18);
+        }
+
+        .threat-button:active {
+            transform: translateY(0);
+        }
+
+        .control-status {
+            flex: 1;
+            border: 1px solid var(--line);
+            border-radius: 9px;
+            padding: 10px;
+            background: rgba(0,0,0,.15);
+        }
+
+        .control-status-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 7px 0;
+            border-bottom: 1px dashed rgba(255,255,255,.05);
+            font-size: 10px;
+        }
+
+        .control-status-row:last-child {
+            border-bottom: none;
+        }
+
+        .ok {
+            color: var(--green);
+            font-weight: 800;
+        }
+
+        /* FOOTER */
+        .footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            border-top: 1px solid var(--line);
+            background: #04070b;
+            color: #506176;
+            font-size: 9px;
+            letter-spacing: .8px;
+        }
+
+        /* ALERT OVERLAY */
+        .alarm-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 5000;
+            background: rgba(100,0,14,.16);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity .18s ease;
+        }
+
+        .alarm-overlay.active {
+            opacity: 1;
+            animation: alarmFlash .72s infinite;
+        }
+
+        .alarm-box {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) scale(.92);
+            z-index: 5100;
+            width: min(500px, calc(100vw - 34px));
+            padding: 26px;
+            border: 1px solid rgba(255,22,72,.72);
+            border-radius: 16px;
+            background: rgba(12, 5, 9, .95);
+            box-shadow:
+                0 0 70px rgba(255,22,72,.22),
+                inset 0 0 45px rgba(255,22,72,.05);
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: .22s ease;
+        }
+
+        .alarm-box.active {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .alarm-icon {
+            font-size: 46px;
+            color: var(--red);
+            filter: drop-shadow(0 0 12px rgba(255,22,72,.55));
+        }
+
+        .alarm-box h2 {
+            margin: 10px 0 7px;
+            font-size: 22px;
+            letter-spacing: 2px;
+            color: #ff5a7e;
+        }
+
+        .alarm-box p {
+            margin: 0 0 17px;
+            color: #bfa6ad;
+            font-size: 12px;
+        }
+
+        .alarm-close {
+            padding: 10px 18px;
+            border: 1px solid rgba(255,22,72,.5);
+            background: transparent;
+            color: #ff6e91;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 800;
+        }
+
+        .alarm-close:hover {
+            background: rgba(255,22,72,.1);
+        }
+
+        /* ATTACK MARKER */
+        .attack-marker {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--red);
+            border: 2px solid rgba(255,255,255,.8);
+            box-shadow:
+                0 0 0 5px rgba(255,22,72,.15),
+                0 0 20px rgba(255,22,72,.7);
+            animation: attackPulse 1s infinite;
+        }
+
+        /* LEAFLET DARK OVERRIDES */
+        .leaflet-control-zoom a {
+            background: #0b121c !important;
+            color: var(--cyan) !important;
+            border-color: #233345 !important;
+        }
+
+        .leaflet-control-attribution {
+            background: rgba(5,8,13,.75) !important;
+            color: #56677b !important;
+        }
+
+        .leaflet-control-attribution a {
+            color: #728aa5 !important;
+        }
+
+        @keyframes pulse {
+            50% {
+                opacity: .35;
+                transform: scale(.72);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes alarmFlash {
+            0%, 100% {
+                background: rgba(255,0,35,.04);
+            }
+
+            50% {
+                background: rgba(255,0,35,.22);
+            }
+        }
+
+        @keyframes attackPulse {
+            50% {
+                transform: scale(1.35);
+                box-shadow:
+                    0 0 0 10px rgba(255,22,72,.05),
+                    0 0 32px rgba(255,22,72,.9);
+            }
+        }
+
+        @media (max-width: 1100px) {
+            body {
+                overflow: auto;
+            }
+
+            .app {
+                height: auto;
+                min-height: 100vh;
+            }
+
+            .main {
+                min-height: 1200px;
+                grid-template-columns: 1fr;
+                grid-template-rows: 520px 400px 420px;
+            }
+
+            .map-panel {
+                grid-row: auto;
+            }
+
+            .right-bottom {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .header {
+                padding: 0 12px;
+            }
+
+            .brand small,
+            .status {
+                display: none;
+            }
+
+            .main {
+                padding: 9px;
+                gap: 9px;
+            }
+
+            .right-bottom {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="app">
+
+    <!-- HEADER -->
+    <header class="header">
+        <div class="brand">
+            <div class="logo">◉</div>
+            <div>
+                <h1>GÖZCÜ-AI</h1>
+                <small>SİBER GÜVENLİK KONTROL PANELİ</small>
+            </div>
+        </div>
+
+        <div class="status-area">
+            <div class="status">
+                <span class="dot"></span>
+                SİSTEM GÜVENLİ
+            </div>
+            <div class="clock" id="clock">--:--:--</div>
+        </div>
+    </header>
+
+
+    <!-- MAIN -->
+    <main class="main">
+
+        <!-- MAP -->
+        <section class="panel map-panel">
+            <div class="panel-header">
+                <div class="panel-title">Küresel Tehdit Haritası</div>
+                <div class="badge" id="threatCount">TEHDİT: 0</div>
+            </div>
+
+            <div id="map"></div>
+
+            <div class="map-overlay">
+                <h3>GÖZCÜ-AI İZLEME</h3>
+
+                <div class="map-stat">
+                    <span>Aktif düğüm</span>
+                    <strong id="nodeCount">128</strong>
+                </div>
+
+                <div class="map-stat">
+                    <span>İncelenen trafik</span>
+                    <strong id="trafficCount">0 GB</strong>
+                </div>
+
+                <div class="map-stat">
+                    <span>Risk seviyesi</span>
+                    <strong id="riskLevel">DÜŞÜK</strong>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- LIVE LOGS -->
+        <section class="panel logs">
+            <div class="panel-header">
+                <div class="panel-title">Canlı Sistem Logları</div>
+                <div class="badge">LIVE / SIMULATION</div>
+            </div>
+
+            <div class="log-container" id="logContainer"></div>
+        </section>
+
+
+        <!-- BOTTOM RIGHT -->
+        <div class="right-bottom">
+
+            <!-- RAM GRAPH -->
+            <section class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">Sıfır İz / RAM Temizleme</div>
+                    <div class="badge">AI CORE</div>
+                </div>
+
+                <div class="graph-content">
+                    <canvas id="ramCanvas"></canvas>
+
+                    <div class="metrics">
+                        <div class="metric">
+                            <small>RAM Kullanımı</small>
+                            <strong id="ramValue">42%</strong>
+                        </div>
+
+                        <div class="metric">
+                            <small>İz Durumu</small>
+                            <strong id="traceValue">98%</strong>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- CONTROLS -->
+            <section class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">Güvenlik Operasyonları</div>
+                    <div class="badge">CONTROL</div>
+                </div>
+
+                <div class="control-content">
+
+                    <button class="threat-button" id="simulateThreat">
+                        ⚠ TEHDİT SİMÜLE ET
+                    </button>
+
+                    <div class="control-status">
+
+                        <div class="control-status-row">
+                            <span>AI Analiz Motoru</span>
+                            <span class="ok">● AKTİF</span>
+                        </div>
+
+                        <div class="control-status-row">
+                            <span>Gerçek Zamanlı İzleme</span>
+                            <span class="ok">● AKTİF</span>
+                        </div>
+
+                        <div class="control-status-row">
+                            <span>Log Analizi</span>
+                            <span class="ok">● AKTİF</span>
+                        </div>
+
+                        <div class="control-status-row">
+                            <span>RAM İzolasyonu</span>
+                            <span class="ok">● AKTİF</span>
+                        </div>
+
+                        <div class="control-status-row">
+                            <span>Tehdit Koruması</span>
+                            <span class="ok" id="protectionState">● NORMAL</span>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <span>GÖZCÜ-AI // SECURITY OPERATIONS CENTER</span>
+        <span>SAHTE VERİ / DEMO MODU</span>
+    </footer>
+
+</div>
+
+
+<!-- ALARM OVERLAY -->
+<div class="alarm-overlay" id="alarmOverlay"></div>
+
+<div class="alarm-box" id="alarmBox">
+    <div class="alarm-icon">⚠</div>
+    <h2>TEHDİT TESPİT EDİLDİ</h2>
+    <p id="alarmText">
+        GÖZCÜ-AI simülasyon ortamında olağan dışı ağ aktivitesi algıladı.
+    </p>
+
+    <button class="alarm-close" id="alarmClose">
+        ALARMI SONLANDIR
+    </button>
+</div>
+
+
+<!-- LEAFLET -->
+<script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin="">
+</script>
+
+<script>
+    /* =========================================================
+       GÖZCÜ-AI
+       Siber Güvenlik Kontrol Paneli
+       Demo / Simülasyon
+    ========================================================= */
+
+
+    /* ---------------------------------------------------------
+       SAAT
+    --------------------------------------------------------- */
+
+    const clock = document.getElementById("clock");
+
+    function updateClock() {
+        const now = new Date();
+
+        clock.textContent =
+            now.toLocaleTimeString("tr-TR", {
+                hour12: false
+            });
+    }
+
+    updateClock();
+    setInterval(updateClock, 1000);
+
+
+    /* ---------------------------------------------------------
+       HARİTA
+    --------------------------------------------------------- */
+
+    const map = L.map("map", {
+        zoomControl: true,
+        attributionControl: true
+    }).setView([30, 20], 2);
+
+    L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap &copy; CARTO'
+        }
+    ).addTo(map);
+
+
+    const countries = [
+        {
+            name: "İstanbul",
+            coords: [41.0082, 28.9784]
+        },
+        {
+            name: "Londra",
+            coords: [51.5074, -0.1278]
+        },
+        {
+            name: "Berlin",
+            coords: [52.52, 13.405]
+        },
+        {
+            name: "Moskova",
+            coords: [55.7558, 37.6173]
+        },
+        {
+            name: "New York",
+            coords: [40.7128, -74.006]
+        },
+        {
+            name: "Washington",
+            coords: [38.9072, -77.0369]
+        },
+        {
+            name: "Singapur",
+            coords: [1.3521, 103.8198]
+        },
+        {
+            name: "Tokyo",
+            coords: [35.6762, 139.6503]
+        },
+        {
+            name: "Dubai",
+            coords: [25.2048, 55.2708]
+        }
+    ];
+
+
+    let attackMarkers = [];
+
+    function createAttackMarker(location) {
+
+        const icon = L.divIcon({
+            className: "",
+            html: '<div class="attack-marker"></div>',
+            iconSize: [18, 18],
+            iconAnchor: [9, 9]
+        });
+
+        const marker = L.marker(location.coords, {
+            icon
+        }).addTo(map);
+
+        marker.bindPopup(
+            `<b style="color:#ff1648">${location.name}</b><br>
+             Simüle edilmiş şüpheli trafik`
+        );
+
+        attackMarkers.push(marker);
+
+        document.getElementById("threatCount").textContent =
+            "TEHDİT: " + attackMarkers.length;
+    }
+
+
+    /* Başlangıçta birkaç normal nokta */
+
+    countries.slice(0, 6).forEach(location => {
+
+        L.circleMarker(location.coords, {
+            radius: 4,
+            color: "#00e5ff",
+            fillColor: "#00e5ff",
+            fillOpacity: .5,
+            weight: 1
+        }).addTo(map);
+
+    });
+
+
+    /* ---------------------------------------------------------
+       CANLI LOG SİSTEMİ
+    --------------------------------------------------------- */
+
+    const logContainer =
+        document.getElementById("logContainer");
+
+    const logMessages = [
+        ["INFO", "Kimlik doğrulama servisi yanıt verdi"],
+        ["SAFE", "Anormal trafik AI tarafından filtrelendi"],
+        ["INFO", "Bulut düğümü ile bağlantı kuruldu"],
+        ["SAFE", "Güvenli oturum doğrulandı"],
+        ["INFO", "Yeni ağ paketi analiz kuyruğuna alındı"],
+        ["SAFE", "Zararlı imza bulunamadı"],
+        ["INFO", "RAM kullanım modeli güncellendi"],
+        ["SAFE", "Güvenlik politikası doğrulandı"],
+        ["INFO", "Davranışsal analiz devam ediyor"],
+        ["WARN", "Kısa süreli trafik yoğunluğu algılandı"],
+        ["INFO", "AI korelasyon motoru tarama başlattı"],
+        ["SAFE", "İletişim trafiği temiz"]
+    ];
+
+    function getTime() {
+
+        return new Date().toLocaleTimeString(
+            "tr-TR",
+            {
+                hour12: false
+            }
+        );
+    }
+
+
+    function addLog(type, message) {
+
+        const row = document.createElement("div");
+
+        row.className = "log-row";
+
+        row.innerHTML = `
+            <span class="log-time">${getTime()}</span>
+            <span class="log-type ${type}">[${type}]</span>
+            <span class="log-msg">${message}</span>
+        `;
+
+        logContainer.prepend(row);
+
+        while (logContainer.children.length > 17) {
+            logContainer.lastElementChild.remove();
+        }
+    }
+
+
+    function randomLog() {
+
+        const item =
+            logMessages[
+                Math.floor(Math.random() * logMessages.length)
+            ];
+
+        addLog(item[0], item[1]);
+    }
+
+
+    for (let i = 0; i < 9; i++) {
+        randomLog();
+    }
+
+
+    setInterval(randomLog, 850);
+
+
+    /* ---------------------------------------------------------
+       TRAFİK SAYACI
+    --------------------------------------------------------- */
+
+    let traffic = 142.5;
+
+    setInterval(() => {
+
+        traffic += Math.random() * 2.7;
+
+        document.getElementById("trafficCount")
+            .textContent = traffic.toFixed(1) + " GB";
+
+    }, 1000);
+
+
+    /* ---------------------------------------------------------
+       RAM / SIFIR İZ GRAFİĞİ
+    --------------------------------------------------------- */
+
+    const canvas =
+        document.getElementById("ramCanvas");
+
+    const ctx = canvas.getContext("2d");
+
+    let ram = 42;
+    let trace = 98;
+
+    const ramHistory = [];
+
+    for (let i = 0; i < 55; i++) {
+        ramHistory.push(
+            36 + Math.random() * 15
+        );
+    }
+
+
+    function resizeCanvas() {
+
+        const rect =
+            canvas.getBoundingClientRect();
+
+        const ratio =
+            window.devicePixelRatio || 1;
+
+        canvas.width =
+            Math.floor(rect.width * ratio);
+
+        canvas.height =
+            Math.floor(rect.height * ratio);
+
+        ctx.setTransform(
+            ratio,
+            0,
+            0,
+            ratio,
+            0,
+            0
+        );
+    }
+
+
+    window.addEventListener(
+        "resize",
+        resizeCanvas
+    );
+
+    resizeCanvas();
+
+
+    function drawGraph() {
+
+        const width =
+            canvas.clientWidth;
+
+        const height =
+            canvas.clientHeight;
+
+        ctx.clearRect(
+            0,
+            0,
+            width,
+            height
+        );
+
+
+        /* Izgara */
+
+        ctx.strokeStyle =
+            "rgba(90,120,150,.14)";
+
+        ctx.lineWidth = 1;
+
+        for (let i = 1; i < 6; i++) {
+
+            const y =
+                (height / 6) * i;
+
+            ctx.beginPath();
+
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+
+            ctx.stroke();
+        }
+
+
+        /* RAM grafiği */
+
+        ctx.beginPath();
+
+        ramHistory.forEach((value, index) => {
+
+            const x =
+                (index / (ramHistory.length - 1))
+                * width;
+
+            const y =
+                height -
+                (value / 100) * height;
+
+            if (index === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        });
+
+        ctx.strokeStyle = "#00e5ff";
+        ctx.lineWidth = 2;
+
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = "#00e5ff";
+
+        ctx.stroke();
+
+        ctx.shadowBlur = 0;
+
+
+        /* Dolgu */
+
+        const gradient =
+            ctx.createLinearGradient(
+                0,
+                0,
+                0,
+                height
+            );
+
+        gradient.addColorStop(
+            0,
+            "rgba(0,229,255,.18)"
+        );
+
+        gradient.addColorStop(
+            1,
+            "rgba(0,229,255,0)"
+        );
+
+        ctx.beginPath();
+
+        ramHistory.forEach((value, index) => {
+
+            const x =
+                (index / (ramHistory.length - 1))
+                * width;
+
+            const y =
+                height -
+                (value / 100) * height;
+
+            if (index === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        });
+
+        ctx.lineTo(width, height);
+        ctx.lineTo(0, height);
+        ctx.closePath();
+
+        ctx.fillStyle = gradient;
+
+        ctx.fill();
+    }
+
+
+    function updateRam() {
+
+        ram +=
+            (Math.random() - .5) * 5;
+
+        ram = Math.max(
+            22,
+            Math.min(62, ram)
+        );
+
+        trace =
+            100 - ram * .04 +
+            Math.random() * 1.2;
+
+        trace = Math.max(
+            95,
+            Math.min(100, trace)
+        );
+
+
+        ramHistory.push(ram);
+
+        if (ramHistory.length > 55) {
+            ramHistory.shift();
+        }
+
+
+        document.getElementById("ramValue")
+            .textContent =
+            Math.round(ram) + "%";
+
+        document.getElementById("traceValue")
+            .textContent =
+            Math.round(trace) + "%";
+
+
+        drawGraph();
+    }
+
+
+    setInterval(updateRam, 700);
+
+
+    /* ---------------------------------------------------------
+       TEHDİT SİMÜLASYONU
+    --------------------------------------------------------- */
+
+    const simulateButton =
+        document.getElementById("simulateThreat");
+
+    const alarmOverlay =
+        document.getElementById("alarmOverlay");
+
+    const alarmBox =
+        document.getElementById("alarmBox");
+
+    const alarmClose =
+        document.getElementById("alarmClose");
+
+    const protectionState =
+        document.getElementById("protectionState");
+
+    const riskLevel =
+        document.getElementById("riskLevel");
+
+
+    let alarmTimeout = null;
+
+
+    function simulateThreat() {
+
+        const location =
+            countries[
+                Math.floor(
+                    Math.random() *
+                    countries.length
+                )
+            ];
+
+
+        /* Haritaya saldırı noktası */
+
+        createAttackMarker(location);
+
+
+        /* Alarm durumları */
+
+        alarmOverlay.classList.add("active");
+        alarmBox.classList.add("active");
+
+        protectionState.innerHTML =
+            "● ALARM";
+
+        protectionState.style.color =
+            "#ff1648";
+
+        riskLevel.textContent =
+            "KRİTİK";
+
+        riskLevel.style.color =
+            "#ff1648";
+
+
+        /* Log üret */
+
+        addLog(
+            "ALERT",
+            "ŞÜPHELİ TRAFİK ALGILANDI → " +
+            location.name
+        );
+
+        addLog(
+            "ALERT",
+            "AI davranış motoru tehdit korelasyonu oluşturdu"
+        );
+
+        addLog(
+            "WARN",
+            "Olağan dışı ağ paterni izole edildi"
+        );
+
+
+        /* Haritayı saldırıya yaklaştır */
+
+        map.flyTo(
+            location.coords,
+            4,
+            {
+                duration: 1.1
+            }
+        );
+
+
+        /* Eski zamanlayıcıyı temizle */
+
+        clearTimeout(alarmTimeout);
+
+
+        alarmTimeout =
+            setTimeout(() => {
+
+                /* Alarm açık kalır; kapatma kullanıcıda */
+
+            }, 5000);
+    }
+
+
+    simulateButton.addEventListener(
+        "click",
+        simulateThreat
+    );
+
+
+    alarmClose.addEventListener(
+        "click",
+        () => {
+
+            alarmOverlay.classList.remove(
+                "active"
+            );
+
+            alarmBox.classList.remove(
+                "active"
+            );
+
+            protectionState.innerHTML =
+                "● NORMAL";
+
+            protectionState.style.color =
+                "#00ff9d";
+
+            riskLevel.textContent =
+                "DÜŞÜK";
+
+            riskLevel.style.color =
+                "";
+
+            addLog(
+                "SAFE",
+                "Alarm kullanıcı tarafından sonlandırıldı"
+            );
+        }
+    );
+
+
+    /* ---------------------------------------------------------
+       KLAVYE KISAYOLU
+       SPACE = TEHDİT SİMÜLE ET
+    --------------------------------------------------------- */
+
+    document.addEventListener(
+        "keydown",
+        (event) => {
+
+            if (
+                event.code === "Space" &&
+                event.target.tagName !== "INPUT" &&
+                event.target.tagName !== "TEXTAREA"
+            ) {
+
+                event.preventDefault();
+
+                simulateThreat();
+            }
+        }
+    );
+
+</script>
+
+</body>
+</html>
